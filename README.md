@@ -1,34 +1,77 @@
-# Codex Activity
+# agent-activity
 
-macOS 菜单栏里的代码符号、彩色状态灯与会话数字。双击 `Codex Activity.app` 启动，点击图标可以查看状态、进行中的会话名称或退出。没有通知、声音或 Dock 图标。当前不会配置登录自启。
+三个 AI 编码终端的 macOS 菜单栏活动指示器，一个仓库按端分包：
 
-- 数字：尚未结束的会话总数，包含等待新记录的会话；空闲隐藏数字。
-- 绿色常亮：至少一个未结束的任务，最近 120 秒内有会话记录。
-- 黄色：任务尚未结束，但超过 120 秒没有新记录；也可能是长时间思考、工具等待、上下文压缩。不能据此确定卡住。
-- 紫色：没有检测到进行中的任务。
-- 黄色且菜单提示无法读取：记录目录不存在或无法访问。
+| 目录 | 终端 | 应用 | 自启 Label | 数据源 |
+|---|---|---|---|---|
+| [`claude/`](claude/) | Claude Code | `Claude Activity.app` | `local.claude.activity` | `~/.claude/sessions/<pid>.json` |
+| [`codex/`](codex/) | ChatGPT 桌面 / Codex CLI | `Codex Activity.app` | `local.codex.activity` | `~/.codex/sessions/**`、`state_*.sqlite` |
+| [`deepseek/`](deepseek/) | DeepSeek Harness | `DeepSeek Harness Activity.app` | `local.deepseek.harness.activity` | `~/.dsh/storages/session_projcache/sessions/*.json` |
 
-每两秒只读 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）中的最近两天存档。读取开始、结束和取消事件，支持多个会话。启动时每个文件最多读取末尾 2MB，之后增量读取。另外通过只读 SQLite 连接读取 `state_*.sqlite` 中的会话名称，只在打开菜单时查询。名称不可用时显示会话短编号。没有读取授权凭据、修改 Codex 设置或发送数据。
+每个包都是独立的 Swift 工程：单文件 `main.swift`、只依赖 AppKit（Claude 额外用 CoreText），编译出各自独立的 `.app`。三个包互不依赖，可以只装其中一个。
 
-这是本地活动指示器，不是任务健康保证。它只能覆盖当前用户本机的会话存档，不能显示其他机器或仅在云端执行的任务。记录格式属于 Codex 内部实现，应用升级后可能需要调整。如果日志未记录开始事件或任务不在读取范围内，可能漏检；如果结束事件缺失，会在无新活动后显示黄色。
+三者行为一致：无 Dock 图标、无通知、无声音，只读本机会话状态，不修改被监视的应用、不读凭据、不发送数据。
 
-## 构建与启动
+## 状态语义
 
-需要 macOS 和 Xcode Command Line Tools（提供 Swift 编译器）。
+通用约定：**数字 = 正在工作或等待确认的会话数**，空闲时隐藏数字；圆点/状态灯表示聚合状态。
+
+| 端 | 绿 | 黄 | 紫 | 其它 |
+|---|---|---|---|---|
+| Claude | 至少一个会话正在对话 | — | 没有对话中的会话 | 橙：读不到注册表 |
+| Codex | 有未结束任务且 120 秒内有记录 | 有未结束任务但 120 秒无新记录 | 没有进行中的任务 | 黄 + 提示：记录目录不可读 |
+| DeepSeek | 正在生成/执行工具/跑任务 | 正在等待用户确认 | Harness 在跑但全部空闲 | 灰：Harness 未运行；橙：读不到缓存 |
+
+各端的判定细节、菜单行为、局限见各自目录下的 README。
+
+## 快速开始
+
+要求 macOS + Xcode Command Line Tools（提供 `swiftc`）。
 
 ```sh
-git clone git@github.com:horizon-527/codex-activity.git
-cd codex-activity
-./build.command
-open 'Codex Activity.app'
+git clone https://github.com/hao-527/agent-activity.git
+cd agent-activity
+./build-all.command          # 只编译三个应用，不安装
 ```
 
-如果尚未安装编译工具，可运行 `xcode-select --install`。源码仓库不包含编译产物；构建脚本会创建完整的应用包并进行本地签名。应用退出后，可再次双击启动。
+按需安装（编译 + 拷到 `~/Applications` + 写登录自启项 + 启动）：
 
-## 源码与验证
+```sh
+cd claude   && ./install.command
+cd codex    && ./install.command
+cd deepseek && ./install.command
+```
 
-`main.swift` 是完整源码，不依赖第三方库。`build.command` 重建并签名应用。
+只重编不安装：`cd <端> && ./build.command`。
 
-应用可执行文件支持 `--self-test`（任务状态单元验证）和 `--check`（读取真实记录并输出状态）。已验证任务开始、完成、取消、轮次匹配、无新活动、不完整记录、多个会话计数及完成后计数减少。
+## 安装位置与卸载
 
-官方会话存档路径说明：https://learn.chatgpt.com/docs/reference/troubleshooting
+- 应用：`~/Applications/<App>.app`
+- 自启：`~/Library/LaunchAgents/local.<端>.activity.plist`
+- 日志：`~/Library/Logs/<App>.log`、`<App>.error.log`
+
+卸载某一端：
+
+```sh
+launchctl bootout "gui/$(id -u)/local.claude.activity"
+rm -rf "$HOME/Applications/Claude Activity.app"
+rm -f "$HOME/Library/LaunchAgents/local.claude.activity.plist"
+```
+
+（`codex` / `deepseek` 换成对应 Label 与应用名即可。）
+
+## 使用与调试
+
+- 菜单里可以查看当前会话、直接打开对应终端，或单独退出 Activity；退出 Activity 不影响终端本身。
+- 三个可执行文件都支持 `--self-test`（状态机自检）和 `--check`（读取真实数据并打印状态）。
+- Claude 与 DeepSeek 还支持 `--render --out <png>`，把各状态渲染成图片，不需要启动应用。
+
+## 仓库说明
+
+- 前身是 `codex-activity`（只有 Codex 一端）。重命名并拆分后，GitHub 上旧链接会自动跳转到本仓库。
+- Kiro 暂未纳入：它的本地指示器是独立仓库 [kiro-desktop-pet](https://github.com/hao-527/kiro-desktop-pet)，形态是桌面宠物（Python/PyObjC），不是菜单栏 Activity。
+- `.app` 等编译产物不入库，由各目录的 `build.command` 现场生成。
+
+## 免责
+
+这是本机活动指示器，不是任务健康保证。只能覆盖当前用户本机的会话存档，看不到其他机器或纯云端的任务；会话记录格式属于各终端内部实现，终端升级后可能需要适配。

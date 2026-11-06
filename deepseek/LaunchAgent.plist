@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.deepseek.harness.activity</string>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__HOME__/Applications/DeepSeek Harness Activity.app/Contents/MacOS/DeepSeekHarnessActivity</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/Library/Logs/DeepSeekHarnessActivity.error.log</string>
+	<key>StandardOutPath</key>
+	<string>__HOME__/Library/Logs/DeepSeekHarnessActivity.log</string>
+</dict>
+</plist>

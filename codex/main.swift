@@ -99,10 +99,45 @@ class Monitor {
         return ("Codex 空闲 · 没有检测到进行中的任务", .systemPurple, 0)
     }
 }
+private let iconCanvas = NSSize(width: 23.5, height: 22)
+
+private func chatGPTMark() -> NSImage? {
+    guard let url = Bundle.main.url(forResource: "ChatGPTTemplate", withExtension: "png"),
+          let image = NSImage(contentsOf: url) else { return nil }
+    image.isTemplate = false
+    return image
+}
+
+private func activityIcon(mark: NSImage?, color: NSColor) -> NSImage {
+    let icon = NSImage(size: iconCanvas, flipped: false) { _ in
+        let markRect = NSRect(x: 0.5, y: 2.5, width: 17, height: 17)
+        if let mark {
+            // Use the official ChatGPT menu-bar mask, tinted with the system label
+            // colour so it remains visible on both light and dark menu bars.
+            mark.draw(in: markRect, from: .zero, operation: .sourceOver, fraction: 1)
+            if let context = NSGraphicsContext.current?.cgContext {
+                context.saveGState()
+                context.setBlendMode(.sourceAtop)
+                context.setFillColor(NSColor.labelColor.cgColor)
+                context.fill(markRect)
+                context.restoreGState()
+            }
+        }
+        NSColor.windowBackgroundColor.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 16, y: 1, width: 8, height: 8)).fill()
+        color.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 17, y: 2, width: 6, height: 6)).fill()
+        return true
+    }
+    icon.isTemplate = false
+    return icon
+}
+
 class Delegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var item: NSStatusItem!
     var timer: Timer?
     let monitor = Monitor(root: URL(fileURLWithPath: ProcessInfo.processInfo.environment["CODEX_HOME"] ?? NSHomeDirectory() + "/.codex").appendingPathComponent("sessions"))
+    let mark = chatGPTMark()
     func applicationDidFinishLaunching(_ notification: Notification) {
         if NSRunningApplication.runningApplications(withBundleIdentifier: "local.codex.activity").count > 1 { NSApp.terminate(nil); return }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -142,32 +177,53 @@ class Delegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func update() {
         monitor.poll()
         let (title, color, count) = monitor.status()
-        item.button?.title = count > 0 ? " \(count)" : ""
+        item.button?.title = count > 0 ? "\(count)" : ""
         item.button?.toolTip = title
         item.button?.setAccessibilityLabel(title)
-        // Native code mark: crisp chevrons with a separate colored activity light.
-        let icon = NSImage(size: NSSize(width: 25, height: 22), flipped: false) { _ in
-            NSColor.labelColor.setStroke()
-            let path = NSBezierPath(); path.lineWidth = 1.65
-            path.lineCapStyle = .round; path.lineJoinStyle = .round
-            path.move(to: NSPoint(x: 7, y: 16)); path.line(to: NSPoint(x: 2, y: 11)); path.line(to: NSPoint(x: 7, y: 6))
-            path.move(to: NSPoint(x: 15, y: 16)); path.line(to: NSPoint(x: 20, y: 11)); path.line(to: NSPoint(x: 15, y: 6))
-            path.move(to: NSPoint(x: 12.5, y: 17)); path.line(to: NSPoint(x: 9.5, y: 5)); path.stroke()
-            NSColor.windowBackgroundColor.setFill()
-            NSBezierPath(ovalIn: NSRect(x: 17, y: 1, width: 8, height: 8)).fill()
-            color.setFill()
-            NSBezierPath(ovalIn: NSRect(x: 18, y: 2, width: 6, height: 6)).fill()
-            return true
-        }
-        icon.isTemplate = false; item.button?.image = icon
+        item.button?.image = activityIcon(mark: mark, color: color)
     }
     @objc func quit() { NSApp.terminate(nil) }
 }
+if CommandLine.arguments.contains("--render") {
+    let args = CommandLine.arguments
+    let output = args.firstIndex(of: "--out").flatMap {
+        $0 + 1 < args.count ? args[$0 + 1] : nil
+    } ?? "/tmp/chatgpt-activity.png"
+    let scale: CGFloat = 8
+    let colors: [NSColor] = [.systemPurple, .systemGreen, .systemOrange]
+    let size = NSSize(width: iconCanvas.width * scale * CGFloat(colors.count),
+                      height: iconCanvas.height * scale)
+    let sheet = NSImage(size: size, flipped: false) { _ in
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        let mark = chatGPTMark()
+        for (index, color) in colors.enumerated() {
+            let context = NSGraphicsContext.current!.cgContext
+            context.saveGState()
+            context.translateBy(x: CGFloat(index) * iconCanvas.width * scale, y: 0)
+            context.scaleBy(x: scale, y: scale)
+            activityIcon(mark: mark, color: color).draw(in: NSRect(origin: .zero, size: iconCanvas))
+            context.restoreGState()
+        }
+        return true
+    }
+    guard let tiff = sheet.tiffRepresentation,
+          let bitmap = NSBitmapImageRep(data: tiff),
+          let png = bitmap.representation(using: .png, properties: [:]) else {
+        print("渲染失败")
+        exit(1)
+    }
+    try! png.write(to: URL(fileURLWithPath: output))
+    print("已渲染 \(output)（\(Int(size.width))×\(Int(size.height))）")
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--check") {
     let monitor = Monitor(root: URL(fileURLWithPath: ProcessInfo.processInfo.environment["CODEX_HOME"] ?? NSHomeDirectory() + "/.codex").appendingPathComponent("sessions"))
     monitor.poll(); print(monitor.status().0); exit(monitor.readable ? 0 : 1)
 }
 if CommandLine.arguments.contains("--self-test") {
+    assert(chatGPTMark() != nil, "ChatGPT 官方菜单栏模板资源未打包")
     var s = Sample()
     func event(_ type: String, _ id: String) -> Data { try! JSONSerialization.data(withJSONObject: ["type":"event_msg", "payload":["type":type,"turn_id":id]]) }
     s.consume(event("task_started", "a")); assert(s.active)
