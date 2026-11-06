@@ -3,8 +3,8 @@
 macOS 专用。三步装完：
 
 ```bash
-cd ~/.kiro/skills/kiro-desktop-pet     # Skill 安装目录
-./scripts/install-pet.sh               # 只有源码目录时改用 ./scripts/install.sh
+cd agent-activity/kiro                 # 本仓库中的 kiro 目录
+./install.command                      # 等价于 ./scripts/install.sh
 ```
 
 前置要求：macOS，Python 3.10 或更高（依赖 PyObjC 12 不支持 macOS 自带的 3.9，脚本会检测并给出安装方式）。
@@ -12,7 +12,7 @@ cd ~/.kiro/skills/kiro-desktop-pet     # Skill 安装目录
 装完验证：
 
 ```bash
-~/kiro-desktop-pet/scripts/verify.sh
+./scripts/verify.sh
 ```
 
 退出码 0 且没有 `[FAIL]` 就算装好；`[WARN]` 是可选项缺失，不影响使用。

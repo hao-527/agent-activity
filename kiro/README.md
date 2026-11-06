@@ -81,7 +81,7 @@
 
 ## 源码住在哪里
 
-这份代码的唯一改动源头是 Skill 目录 `~/.kiro/skills/kiro-desktop-pet/app/`，本目录（`~/kiro-desktop-pet`）是由 `install-pet.sh` 覆盖生成的**运行目录**，在这里改会被下次部署覆盖。改代码、部署和发版流程见 Skill 目录里的 `references/maintain.md`。
+这个目录（`agent-activity/kiro`）就是唯一源码。`scripts/install.sh` 会就地建立 `.venv`、按当前路径生成登录自启配置并启动，不再从别处部署覆盖；改动、自检和打包都在这里进行（打包用 `scripts/package.sh`）。
 
 ## 安装与分发
 

@@ -81,7 +81,7 @@ rm -f "$HOME/Library/LaunchAgents/local.claude.activity.plist"
 ## 仓库说明
 
 - 前身是 `codex-activity`（只有 Codex 一端）。重命名并拆分后，GitHub 上旧链接会自动跳转到本仓库。
-- `kiro/` 收录的是本机实际运行版本（1.7.1，含 `waiting` 状态与 `status_icon`），比已发布的 Skill 包 [hao-527/kiro-desktop-pet](https://github.com/hao-527/kiro-desktop-pet) 新；后续以本仓库的 `kiro/` 为准。
+- `kiro/` 收录的是本机实际运行版本（1.7.1，含 `waiting` 状态与 `status_icon`）。原独立仓库 `hao-527/kiro-desktop-pet` 已转为私有、仅作归档，后续唯一的源码入口是本仓库的 `kiro/`。
 - 编译产物（`*.app`）、Python 虚拟环境（`.venv/`）、`__pycache__/` 均不入库。
 
 ## 免责

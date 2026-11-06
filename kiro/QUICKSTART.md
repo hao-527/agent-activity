@@ -4,19 +4,12 @@ macOS 专用。把 Kiro 的运行状态变成桌面上的像素小狗：谁在�
 
 ## 安装（约一分钟）
 
-在 Kiro 里说一句「安装 Kiro 桌宠」，Skill 会自动装好。想手动装：
-
 ```bash
-cd ~/.kiro/skills/kiro-desktop-pet
-./scripts/install-pet.sh
+cd agent-activity/kiro     # 本仓库中的 kiro 目录
+./install.command          # 等价于 ./scripts/install.sh
 ```
 
-只拿到源码目录、没有 Skill 时：
-
-```bash
-cd <源码目录>
-./scripts/install.sh
-```
+不需要 Skill：源码就在这个目录，脚本会就地建 `.venv` 并生成登录自启配置。
 
 需要 macOS 与 Python 3.10+（macOS 自带的 3.9 不行，脚本会提示怎么装）。
 
